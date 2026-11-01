@@ -60,6 +60,8 @@ ARCHIVOS_DEFECTO = {
     "fondo_h": "assets/images/fondo_hombres.png",
     "img_m": "assets/images/chica.png",
     "img_h": "assets/images/chico.png",
+    "victoria_img_m": "assets/images/victoria_mujeres.png",
+    "victoria_img_h": "assets/images/victoria_hombres.png",
     "adorno_m1": "assets/images/adorno_m1.png",
     "adorno_m2": "assets/images/adorno_m2.png",
     "adorno_h1": "assets/images/adorno_h1.png",
@@ -382,6 +384,7 @@ class Juego:
         self.mujeres = 0
         self.hombres = 0
         self.ultimo_empuje = None
+        self.ultimo_empuje_t = -1.0
         self.barra_pos = 0.5
         self.pulso_m = 0.0
         self.pulso_h = 0.0
@@ -426,6 +429,8 @@ class Juego:
         self.fondo_m_custom = cargar_cubrir(resolver(c, "fondo_m"))
         self.fondo_h_custom = cargar_cubrir(resolver(c, "fondo_h"))
         self.img = {}
+        self.victoria_img_m = cargar_cubrir(resolver(c, "victoria_img_m"))
+        self.victoria_img_h = cargar_cubrir(resolver(c, "victoria_img_h"))
         for k in ("img_m", "img_h"):
             r = resolver(c, k)
             self.img[k + "_j"] = cargar_imagen(r, 500)
@@ -547,7 +552,10 @@ class Juego:
         if self.estado != "juego":
             return
         self.sonar("click")
+        anterior = self.ultimo_empuje
+        mismo_instante = self.ultimo_empuje_t == self.t and anterior is not None and anterior != quien
         self.ultimo_empuje = quien
+        self.ultimo_empuje_t = self.t
         if quien == "m":
             self.pulso_m = 0.25
         else:
@@ -555,8 +563,13 @@ class Juego:
         # Cada pulsación desplaza claramente la línea de fuerza.
         # La posición es compartida: si ambos equipos pulsan exactamente igual,
         # la barra se mantiene equilibrada, pero los personajes sí muestran el empuje.
-        velocidad = 0.024 * float(self.cfg.get("velocidad_barra", 1.0))
-        self.barra_pos = max(0.0, min(1.0, self.barra_pos + (-velocidad if quien == "m" else velocidad)))
+        velocidad = 0.038 * float(self.cfg.get("velocidad_barra", 1.0))
+        desplazamiento = (-velocidad if quien == "m" else velocidad)
+        # Si los dos equipos pulsan en el mismo instante, el último toque deja
+        # un pequeño desplazamiento visible para que el centro no parezca congelado.
+        if mismo_instante:
+            desplazamiento *= 1.35
+        self.barra_pos = max(0.0, min(1.0, self.barra_pos + desplazamiento))
         if self.barra_pos <= 0.015:
             self.finalizar_ronda("m")
         elif self.barra_pos >= 0.985:
@@ -580,6 +593,7 @@ class Juego:
         self.ronda += 1
         self.mujeres = self.hombres = 0
         self.ultimo_empuje = None
+        self.ultimo_empuje_t = -1.0
         self.barra_pos = 0.5
         self.tiempo_restante = 40.0
         self.tiempo_extra = 0.0
@@ -932,7 +946,7 @@ class Juego:
             for x, y, r in ((90, 330, 40), (230, 260, 24), (ANCHO - 90, 330, 40), (ANCHO - 230, 260, 24)):
                 estrella(p, (x, y + math.sin(self.t * 2 + x) * 7), r, BLANCO)
             escribir(p, "BATALLA DE FUERZA", fuente(80), DORADO, (ANCHO // 2, 62))
-            for nombre, cx, osc in ((n1, ANCHO // 4, ROSA_OSC), (n2, 3 * ANCHO // 4, AZUL_OSC)):
+            for nombre, cx, osc in ((n2, ANCHO // 4, AZUL_OSC), (n1, 3 * ANCHO // 4, ROSA_OSC)):
                 r = pygame.Rect(0, 0, 440, 100)
                 r.center = (cx, 190)
                 pygame.draw.rect(p, osc, r, border_radius=28)
@@ -1039,21 +1053,23 @@ class Juego:
             ("fondo_m", "Fondo equipo rosa", "img"),
             ("fondo_h", "Fondo equipo azul", "img"),
             ("musica_fondo", "Música durante el juego", "aud"),
-            ("musica_vic_m", "Victoria equipo rosa", "aud"),
-            ("musica_vic_h", "Victoria equipo azul", "aud"),
+            ("victoria_img_h", "Imagen victoria hombres", "img"),
+            ("victoria_img_m", "Imagen victoria mujeres", "img"),
+            ("musica_vic_m", "Música victoria mujeres", "aud"),
+            ("musica_vic_h", "Música victoria hombres", "aud"),
             ("sfx_click", "Sonido de pulsación", "aud"),
             ("sfx_conteo", "Sonido de cuenta", "aud"),
             ("sfx_inicio", "Sonido de inicio", "aud"),
         ]
         for i, (k, etq, tipo) in enumerate(filas):
-            y = 143 + i * 39
+            y = 143 + i * 31
             custom = k in self.cfg["archivos"]
             escribir(p, etq + ("  ✓" if custom else ""), fuente(18, False),
                      DORADO if custom else BLANCO, (xr, y + 19), sombra=False, alin="midleft")
-            self.boton((xr + 345, y, 92, 34), "CAMBIAR", lambda k=k, t=tipo: self.elegir_archivo(k, t),
-                       (40, 70, 125), fuente(15))
-            self.boton((xr + 444, y, 92, 34), "ORIGINAL", lambda k=k: self.archivo_original(k),
-                       (100, 45, 55), fuente(14))
+            self.boton((xr + 345, y, 92, 28), "CAMBIAR", lambda k=k, t=tipo: self.elegir_archivo(k, t),
+                       (40, 70, 125), fuente(14))
+            self.boton((xr + 444, y, 92, 28), "ORIGINAL", lambda k=k: self.archivo_original(k),
+                       (100, 45, 55), fuente(13))
 
         if self.mensaje:
             escribir(p, self.mensaje, fuente(18, False), DORADO, (ANCHO // 2, 613))
@@ -1100,14 +1116,14 @@ class Juego:
         p = self.pantalla
         rosa = self.fondo_m_custom or self.bg_rosa
         azul = self.fondo_h_custom or self.bg_azul
-        p.blit(rosa, (0, 0), pygame.Rect(0, 0, div, ALTO))
-        p.blit(azul, (div, 0), pygame.Rect(div, 0, ANCHO - div, ALTO))
+        p.blit(azul, (0, 0), pygame.Rect(0, 0, div, ALTO))
+        p.blit(rosa, (div, 0), pygame.Rect(div, 0, ANCHO - div, ALTO))
 
     def dibujar_nombres(self):
         n1, n2 = self.nombres()
         p = self.pantalla
-        escribir(p, n1, fuente_ajustada(n1, 420, 58), BLANCO, (30, 98), alin="midleft")
-        escribir(p, n2, fuente_ajustada(n2, 420, 58), BLANCO, (ANCHO - 30, 98), alin="midright")
+        escribir(p, n2, fuente_ajustada(n2, 420, 58), BLANCO, (30, 98), alin="midleft")
+        escribir(p, n1, fuente_ajustada(n1, 420, 58), BLANCO, (ANCHO - 30, 98), alin="midright")
 
     def dibujar_juego(self):
         p = self.pantalla
@@ -1116,10 +1132,10 @@ class Juego:
         self.dibujar_campo(div)
         pygame.draw.rect(p, BLANCO, (div - 10, 0, 20, ALTO))
 
-        self.adorno("adorno_m1", 60, 230, 0.0)
-        self.adorno("adorno_m2", 100, 420, 1.7)
-        self.adorno("adorno_h1", ANCHO - 60, 230, 0.9, True)
-        self.adorno("adorno_h2", ANCHO - 100, 420, 2.4, True)
+        self.adorno("adorno_h1", 60, 230, 0.9)
+        self.adorno("adorno_h2", 100, 420, 2.4)
+        self.adorno("adorno_m1", ANCHO - 60, 230, 0.0, True)
+        self.adorno("adorno_m2", ANCHO - 100, 420, 1.7, True)
 
         # Animación de embestida: cada pulsación hace que el personaje avance
         # físicamente hacia el rival y regrese suavemente a su posición.
@@ -1129,10 +1145,10 @@ class Juego:
         sacudida_h = math.sin(self.t * 40) * 3 if self.pulso_h > 0 else 0
         im = self.img.get("img_m_j")
         ih = self.img.get("img_h_j")
-        if im:
-            p.blit(im, (div - 12 - im.get_width() + fuerza_m + sacudida_m, ALTO - im.get_height() + 12))
         if ih:
-            p.blit(ih, (div + 12 - fuerza_h + sacudida_h, ALTO - ih.get_height() + 12))
+            p.blit(ih, (div - 12 - ih.get_width() + fuerza_h + sacudida_h, ALTO - ih.get_height() + 12))
+        if im:
+            p.blit(im, (div + 12 - fuerza_m + sacudida_m, ALTO - im.get_height() + 12))
 
         self.dibujar_nombres()
 
@@ -1178,7 +1194,8 @@ class Juego:
     def dibujar_victoria(self):
         p = self.pantalla
         gana_m = self.ganador == "m"
-        p.blit(self.bg_rosa if gana_m else self.bg_azul, (0, 0))
+        fondo_ganador = self.victoria_img_m if gana_m else self.victoria_img_h
+        p.blit(fondo_ganador if fondo_ganador else (self.bg_rosa if gana_m else self.bg_azul), (0, 0))
         for c in self.confeti:
             pygame.draw.rect(p, c[4], (c[0], c[1], c[5], c[5] * 1.6))
         img = self.img.get("img_m_g" if gana_m else "img_h_g")
