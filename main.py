@@ -56,6 +56,8 @@ def ruta_asset(rel):
 
 ARCHIVOS_DEFECTO = {
     "bienvenida": "assets/images/bienvenida.png",
+    "fondo_m": "assets/images/fondo_mujeres.png",
+    "fondo_h": "assets/images/fondo_hombres.png",
     "img_m": "assets/images/chica.png",
     "img_h": "assets/images/chico.png",
     "adorno_m1": "assets/images/adorno_m1.png",
@@ -412,6 +414,8 @@ class Juego:
     def recargar_recursos(self):
         c = self.cfg
         self.img_bienv = cargar_cubrir(resolver(c, "bienvenida"))
+        self.fondo_m_custom = cargar_cubrir(resolver(c, "fondo_m"))
+        self.fondo_h_custom = cargar_cubrir(resolver(c, "fondo_h"))
         self.img = {}
         for k in ("img_m", "img_h"):
             r = resolver(c, k)
@@ -578,6 +582,11 @@ class Juego:
         self.actualizar_codigos()
         guardar_config(self.cfg)
         self.aviso("Tecla guardada: " + nombre.upper())
+
+    def cambiar_modo_control(self):
+        self.cfg["modo_control"] = "pulsador" if self.cfg["modo_control"] == "teclado" else "teclado"
+        guardar_config(self.cfg)
+        self.aviso("Control seleccionado: " + self.cfg["modo_control"].upper())
 
     def cambiar_meta(self, delta):
         self.cfg["meta"] = max(3, min(999, self.cfg["meta"] + delta))
@@ -792,6 +801,11 @@ class Juego:
                 self.ev_editor(e)
                 continue
             if e.type == pygame.KEYDOWN:
+                if self.estado == "juego" and self.cfg["modo_control"] == "pulsador":
+                    if e.key == self.cod["mujeres"]: self.sumar("m")
+                    elif e.key == self.cod["hombres"]: self.sumar("h")
+                    elif e.key == self.cod["reiniciar"]: self.volver_menu()
+                    continue
                 if self.tecla(e) is False:
                     return False
         return True
@@ -923,6 +937,9 @@ class Juego:
             self.boton((xl + 300, y, 270, 44), txt, lambda k=k: self.esperar_tecla(k),
                        (200, 120, 0) if espera else (40, 60, 120))
         y = y0 + 4 * paso
+        escribir(p, "Modo de control", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 270, 44), self.cfg["modo_control"].upper(), self.cambiar_modo_control, VERDE)
+        y += paso
         escribir(p, "Nombre equipo 1", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
         self.boton((xl + 300, y, 270, 44), n1, lambda: self.editar_nombre(0), (170, 20, 110))
         y += paso
@@ -952,6 +969,8 @@ class Juego:
         filas = [("bienvenida", "Imagen de bienvenida", "img"),
                  ("img_m", "Imagen " + n1, "img"),
                  ("img_h", "Imagen " + n2, "img"),
+                 ("fondo_m", "Fondo rosa mujeres", "img"),
+                 ("fondo_h", "Fondo azul hombres", "img"),
                  ("musica_fondo", "Música de fondo", "aud"),
                  ("musica_vic_m", "Celebración " + n1, "aud"),
                  ("musica_vic_h", "Celebración " + n2, "aud"),
@@ -1010,8 +1029,10 @@ class Juego:
 
     def dibujar_campo(self, div):
         p = self.pantalla
-        p.blit(self.bg_rosa, (0, 0), pygame.Rect(0, 0, div, ALTO))
-        p.blit(self.bg_azul, (div, 0), pygame.Rect(div, 0, ANCHO - div, ALTO))
+        rosa = self.fondo_m_custom or self.bg_rosa
+        azul = self.fondo_h_custom or self.bg_azul
+        p.blit(rosa, (0, 0), pygame.Rect(0, 0, div, ALTO))
+        p.blit(azul, (div, 0), pygame.Rect(div, 0, ANCHO - div, ALTO))
 
     def dibujar_nombres(self):
         n1, n2 = self.nombres()
