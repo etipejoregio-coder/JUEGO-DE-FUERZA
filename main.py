@@ -383,6 +383,10 @@ class Juego:
         self.t = 0.0
         self.mujeres = 0
         self.hombres = 0
+        self.combo_m = 0
+        self.combo_h = 0
+        self.mensaje_fuerza = ""
+        self.mensaje_fuerza_t = 0.0
         self.ultimo_empuje = None
         self.ultimo_empuje_t = -1.0
         self.barra_pos = 0.5
@@ -536,6 +540,9 @@ class Juego:
         self.voz.parar()
         self.mujeres = 0
         self.hombres = 0
+        self.combo_m = self.combo_h = 0
+        self.mensaje_fuerza = ""
+        self.mensaje_fuerza_t = 0.0
         self.barra_pos = 0.5
         self.barra_objetivo = 0.5
         self.tiempo_restante = 40.0
@@ -561,13 +568,27 @@ class Juego:
             self.mujeres += 1
             if self.mujeres >= 5:
                 self.mujeres = 0
-                self.barra_objetivo = max(0.015, self.barra_objetivo - 0.045)
+                if self.combo_m == 0:
+                    self.barra_objetivo = max(0.015, self.barra_objetivo - 0.045)
+                    self.combo_m = 1
+                else:
+                    self.barra_objetivo = max(0.015, self.barra_objetivo - 0.075)
+                    self.combo_m = 0
+                    self.mensaje_fuerza = "¡SUPER FUERZA MUJERES!"
+                    self.mensaje_fuerza_t = 1.35
         else:
             self.pulso_h = 0.32
             self.hombres += 1
             if self.hombres >= 5:
                 self.hombres = 0
-                self.barra_objetivo = min(0.985, self.barra_objetivo + 0.045)
+                if self.combo_h == 0:
+                    self.barra_objetivo = min(0.985, self.barra_objetivo + 0.045)
+                    self.combo_h = 1
+                else:
+                    self.barra_objetivo = min(0.985, self.barra_objetivo + 0.075)
+                    self.combo_h = 0
+                    self.mensaje_fuerza = "¡SUPER FUERZA HOMBRES!"
+                    self.mensaje_fuerza_t = 1.35
 
     def finalizar_ronda(self, quien):
         if self.estado != "juego":
@@ -586,6 +607,9 @@ class Juego:
             return
         self.ronda += 1
         self.mujeres = self.hombres = 0
+        self.combo_m = self.combo_h = 0
+        self.mensaje_fuerza = ""
+        self.mensaje_fuerza_t = 0.0
         self.barra_objetivo = 0.5
         self.ultimo_empuje = None
         self.ultimo_empuje_t = -1.0
@@ -899,6 +923,9 @@ class Juego:
                     self.finalizar_ronda("m" if self.barra_pos < 0.5 else "h")
         self.pulso_m = max(0.0, self.pulso_m - dt)
         self.pulso_h = max(0.0, self.pulso_h - dt)
+        self.mensaje_fuerza_t = max(0.0, self.mensaje_fuerza_t - dt)
+        if self.mensaje_fuerza_t <= 0:
+            self.mensaje_fuerza = ""
         if self.mensaje_t > 0:
             self.mensaje_t -= dt
             if self.mensaje_t <= 0:
@@ -1176,6 +1203,19 @@ class Juego:
         escribir(p, "[%s]" % self.nombre_tecla("mujeres"), fuente(22), BLANCO, (190, ALTO - 18))
         escribir(p, "EMPUJA", fuente(25), BLANCO, (ANCHO - 190, ALTO - 48))
         escribir(p, "[%s]" % self.nombre_tecla("hombres"), fuente(22), BLANCO, (ANCHO - 190, ALTO - 18))
+
+        if self.mensaje_fuerza_t > 0:
+            escala = 1.0 + 0.10 * math.sin(self.t * 24)
+            texto = fuente(58).render(self.mensaje_fuerza, True, DORADO)
+            texto = pygame.transform.rotozoom(texto, 0, escala)
+            sombra = fuente(58).render(self.mensaje_fuerza, True, NEGRO)
+            sombra = pygame.transform.rotozoom(sombra, 0, escala)
+            rect = texto.get_rect(center=(ANCHO // 2, ALTO // 2 - 105))
+            fondo = rect.inflate(54, 30)
+            pygame.draw.rect(p, (18, 12, 38), fondo, border_radius=22)
+            pygame.draw.rect(p, DORADO, fondo, 4, border_radius=22)
+            p.blit(sombra, sombra.get_rect(center=(rect.centerx + 4, rect.centery + 4)))
+            p.blit(texto, rect)
 
         self.boton((ANCHO - 200, 12, 185, 42), "REINICIAR (%s)" % self.nombre_tecla("reiniciar"),
                    self.volver_menu, (200, 40, 60), fuente(18))
