@@ -551,7 +551,10 @@ class Juego:
         else:
             self.hombres += 1
             self.pulso_h = 0.25
-        velocidad = 0.018 * float(self.cfg.get("velocidad_barra", 1.0))
+        # Cada pulsación desplaza claramente la línea de fuerza.
+        # La posición es compartida: si ambos equipos pulsan exactamente igual,
+        # la barra se mantiene equilibrada, pero los personajes sí muestran el empuje.
+        velocidad = 0.024 * float(self.cfg.get("velocidad_barra", 1.0))
         self.barra_pos = max(0.0, min(1.0, self.barra_pos + (-velocidad if quien == "m" else velocidad)))
         if self.barra_pos <= 0.015:
             self.finalizar_ronda("m")
@@ -1109,14 +1112,18 @@ class Juego:
         self.adorno("adorno_h1", ANCHO - 60, 230, 0.9, True)
         self.adorno("adorno_h2", ANCHO - 100, 420, 2.4, True)
 
+        # Animación de embestida: cada pulsación hace que el personaje avance
+        # físicamente hacia el rival y regrese suavemente a su posición.
+        fuerza_m = math.sin(min(1.0, self.pulso_m / 0.25) * math.pi / 2) * 30
+        fuerza_h = math.sin(min(1.0, self.pulso_h / 0.25) * math.pi / 2) * 30
         sacudida_m = math.sin(self.t * 40) * 3 if self.pulso_m > 0 else 0
         sacudida_h = math.sin(self.t * 40) * 3 if self.pulso_h > 0 else 0
         im = self.img.get("img_m_j")
         ih = self.img.get("img_h_j")
         if im:
-            p.blit(im, (div - 12 - im.get_width() + sacudida_m, ALTO - im.get_height() + 12))
+            p.blit(im, (div - 12 - im.get_width() + fuerza_m + sacudida_m, ALTO - im.get_height() + 12))
         if ih:
-            p.blit(ih, (div + 12 + sacudida_h, ALTO - ih.get_height() + 12))
+            p.blit(ih, (div + 12 - fuerza_h + sacudida_h, ALTO - ih.get_height() + 12))
 
         self.dibujar_nombres()
 
