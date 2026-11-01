@@ -386,6 +386,7 @@ class Juego:
         self.ultimo_empuje = None
         self.ultimo_empuje_t = -1.0
         self.barra_pos = 0.5
+        self.barra_objetivo = 0.5
         self.pulso_m = 0.0
         self.pulso_h = 0.0
         self.ganador = None
