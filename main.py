@@ -87,6 +87,8 @@ CFG_DEFECTO = {
     "teclas": {"mujeres": "a", "hombres": "l", "reiniciar": "r", "reglas": "f1"},
     "nombres": ["MUJERES", "HOMBRES"],
     "meta": 30,
+    "modo_control": "teclado",
+    "velocidad_barra": 1.0,
     "texto_gana": "¡{EQUIPO} GANAN!",
     "reglas": REGLAS_DEFECTO,
     "archivos": {},
@@ -110,6 +112,10 @@ def cargar_config():
                     cfg[k] = v
                 elif k == "pantalla_completa" and isinstance(v, bool):
                     cfg[k] = v
+                elif k == "modo_control" and v in ("teclado", "pulsador"):
+                    cfg[k] = v
+                elif k == "velocidad_barra" and isinstance(v, (int, float)):
+                    cfg[k] = max(0.5, min(3.0, float(v)))
     except Exception:
         pass
     return cfg
@@ -522,6 +528,14 @@ class Juego:
         self.mujeres = 0
         self.hombres = 0
         self.barra_pos = 0.5
+        self.tiempo_restante = 40.0
+        self.tiempo_extra = 0.0
+        self.ronda = 1
+        self.puntos_ronda = {"m": 0, "h": 0}
+        self.tiempo_restante = 40.0
+        self.tiempo_extra = 0.0
+        self.ronda = 1
+        self.puntos_ronda = {"m": 0, "h": 0}
         self.pulso_m = self.pulso_h = 0.0
         self.ganador = None
         self.confeti = []
@@ -540,12 +554,43 @@ class Juego:
         else:
             self.hombres += 1
             self.pulso_h = 0.25
-        meta = self.cfg["meta"]
-        if self.mujeres >= meta or self.hombres >= meta:
-            self.ganador = "m" if self.mujeres >= meta else "h"
-            self.estado = "victoria"
-            self.poner_musica("vic_" + self.ganador)
-            self.crear_confeti()
+        velocidad = 0.018 * float(self.cfg.get("velocidad_barra", 1.0))
+        self.barra_pos = max(0.0, min(1.0, self.barra_pos + (-velocidad if quien == "m" else velocidad)))
+        if self.barra_pos <= 0.015:
+            self.finalizar_ronda("m")
+        elif self.barra_pos >= 0.985:
+            self.finalizar_ronda("h")
+
+    def finalizar_ronda(self, quien):
+        if self.estado != "juego":
+            return
+        self.ganador = quien
+        self.puntos_ronda[quien] += 1
+        self.estado = "victoria"
+        self.poner_musica("vic_" + quien)
+        self.crear_confeti()
+
+    def siguiente_ronda(self):
+        if self.ronda >= 5:
+            self.estado = "final"
+            self.ganador = ("m" if self.puntos_ronda["m"] > self.puntos_ronda["h"] else
+                            "h" if self.puntos_ronda["h"] > self.puntos_ronda["m"] else None)
+            return
+        self.ronda += 1
+        self.mujeres = self.hombres = 0
+        self.barra_pos = 0.5
+        self.tiempo_restante = 40.0
+        self.tiempo_extra = 0.0
+        self.ganador = None
+        self.confeti = []
+        self.t_conteo = 0.0
+        self.ultimo_paso = -1
+        self.estado = "conteo"
+        self.poner_musica("fondo")
+
+    def cambiar_velocidad(self, delta):
+        self.cfg["velocidad_barra"] = max(0.5, min(3.0, round(float(self.cfg.get("velocidad_barra", 1.0)) + delta, 1)))
+        guardar_config(self.cfg)
 
     def crear_confeti(self):
         cols = [ROSA, BLANCO, DORADO] if self.ganador == "m" else [AZUL, BLANCO, DORADO]
@@ -784,6 +829,9 @@ class Juego:
                 self.volver_menu()
         elif self.estado == "victoria":
             if enter or e.key == self.cod["reiniciar"]:
+                self.siguiente_ronda()
+        elif self.estado == "final":
+            if enter or e.key == self.cod["reiniciar"]:
                 self.volver_menu()
         return True
 
@@ -813,10 +861,17 @@ class Juego:
     # ---------------------------------------------------------------- update
     def actualizar(self, dt):
         self.t += dt
-        meta = self.cfg["meta"]
-        objetivo = 0.5 + 0.28 * (self.mujeres - self.hombres) / float(meta)
-        objetivo = max(0.22, min(0.78, objetivo))
-        self.barra_pos += (objetivo - self.barra_pos) * min(1.0, dt * 8)
+        if self.estado == "juego":
+            self.tiempo_restante -= dt
+            if self.tiempo_restante <= 0:
+                if self.tiempo_extra <= 0 and abs(self.barra_pos - 0.5) < 0.002:
+                    self.tiempo_extra = 10.0
+                elif self.tiempo_extra > 0:
+                    self.tiempo_extra -= dt
+                    if self.tiempo_extra <= 0:
+                        self.finalizar_ronda("m" if self.barra_pos < 0.5 else "h" if self.barra_pos > 0.5 else ("m" if self.mujeres > self.hombres else "h"))
+                else:
+                    self.finalizar_ronda("m" if self.barra_pos < 0.5 else "h")
         self.pulso_m = max(0.0, self.pulso_m - dt)
         self.pulso_h = max(0.0, self.pulso_h - dt)
         if self.mensaje_t > 0:
@@ -939,6 +994,11 @@ class Juego:
         y = y0 + 4 * paso
         escribir(p, "Modo de control", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
         self.boton((xl + 300, y, 270, 44), self.cfg["modo_control"].upper(), self.cambiar_modo_control, VERDE)
+        y += paso
+        escribir(p, "Velocidad de empuje", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 60, 44), "-", lambda: self.cambiar_velocidad(-0.2))
+        escribir(p, "%.1fx" % self.cfg.get("velocidad_barra", 1.0), fuente(28), DORADO, (xl + 405, y + 22))
+        self.boton((xl + 500, y, 60, 44), "+", lambda: self.cambiar_velocidad(0.2))
         y += paso
         escribir(p, "Nombre equipo 1", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
         self.boton((xl + 300, y, 270, 44), n1, lambda: self.editar_nombre(0), (170, 20, 110))
@@ -1068,8 +1128,10 @@ class Juego:
         pill.center = (ANCHO // 2, 46)
         pygame.draw.rect(p, (20, 20, 44), pill, border_radius=30)
         pygame.draw.rect(p, BLANCO, pill, 4, border_radius=30)
-        escribir(p, "%d  -  %d" % (self.mujeres, self.hombres), fuente(54), DORADO, pill.center, off=3)
-        escribir(p, "META: %d" % self.cfg["meta"], fuente(22), BLANCO, (ANCHO // 2, 100))
+        escribir(p, "RONDA %d/5" % self.ronda, fuente(25), DORADO, (ANCHO // 2, 96))
+        reloj_txt = "PRORROGA %02d" % max(0, int(self.tiempo_extra)) if self.tiempo_extra > 0 else "TIEMPO %02d" % max(0, int(self.tiempo_restante))
+        escribir(p, reloj_txt, fuente(28), BLANCO, (ANCHO // 2, 130))
+        escribir(p, "SERIE %d - %d" % (self.puntos_ronda["m"], self.puntos_ronda["h"]), fuente(22), DORADO, (ANCHO // 2, 160))
 
         # numeros grandes abajo
         fm = fuente(180 if self.pulso_m > 0 else 150)
@@ -1125,10 +1187,20 @@ class Juego:
         p.blit(s, s.get_rect(center=(ANCHO // 2, 250)))
         escribir(p, "%d  -  %d" % (self.mujeres, self.hombres), fuente(130), DORADO, (ANCHO // 2, 420))
         if int(self.t * 2) % 2 == 0:
-            m = "PRESIONA [%s] PARA REINICIAR" % self.nombre_tecla("reiniciar")
+            m = "PRESIONA [%s] PARA SIGUIENTE RONDA" % self.nombre_tecla("reiniciar")
             escribir(p, m, fuente_ajustada(m, ANCHO - 200, 52), BLANCO, (ANCHO // 2, 600))
-        self.boton((ANCHO - 200, 12, 185, 42), "REINICIAR (%s)" % self.nombre_tecla("reiniciar"),
-                   self.volver_menu, (200, 40, 60), fuente(18))
+        self.boton((ANCHO - 200, 12, 185, 42), "SIGUIENTE RONDA",
+                   self.siguiente_ronda, (200, 40, 60), fuente(18))
+
+    def dibujar_final(self):
+        p = self.pantalla
+        p.blit(self.fondo_oscuro, (0, 0))
+        m, h = self.puntos_ronda["m"], self.puntos_ronda["h"]
+        escribir(p, "TORNEO TERMINADO", fuente(72), DORADO, (ANCHO // 2, 145))
+        escribir(p, "%s  %d  -  %d  %s" % (self.nombres()[0], m, h, self.nombres()[1]), fuente_ajustada("RESULTADO", ANCHO - 100, 56), BLANCO, (ANCHO // 2, 300))
+        resultado = "EMPATE" if self.ganador is None else self.nombres()[0 if self.ganador == "m" else 1] + " GANAN EL TORNEO"
+        escribir(p, resultado, fuente(52), DORADO, (ANCHO // 2, 420))
+        self.boton((ANCHO // 2 - 180, 560, 360, 70), "NUEVO TORNEO", self.volver_menu, VERDE)
 
     # ---------------------------------------------------------------- loop
     def dibujar(self):
@@ -1146,6 +1218,8 @@ class Juego:
             self.dibujar_conteo()
         elif est == "juego":
             self.dibujar_juego()
+        elif est == "final":
+            self.dibujar_final()
         else:
             self.dibujar_victoria()
         self._botones = self._btn_nuevos
