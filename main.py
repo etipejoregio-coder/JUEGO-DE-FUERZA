@@ -77,9 +77,10 @@ REGLAS_DEFECTO = (
     "Hay dos equipos: {EQ1} y {EQ2}.\n"
     "Cuando termine el conteo regresivo, cada equipo presiona su tecla lo más rápido que pueda. "
     "El equipo {EQ1} usa la tecla {TECLA1} y el equipo {EQ2} usa la tecla {TECLA2}.\n"
-    "Cada pulsación empuja la barra central hacia el lado de tu equipo.\n"
-    "La ronda dura 40 segundos: gana quien llegue al extremo o quien tenga mayor avance al terminar.\n"
-    "Si hay empate, se juega una prórroga de 10 segundos. El torneo consta de cinco rondas.\n"
+    "El juego se basa únicamente en empujar la barra central hacia el lado de tu equipo.\n"
+    "No se cuentan las pulsaciones: gana automáticamente el equipo que arrincone al rival hasta el extremo.\n"
+    "La ronda dura 40 segundos; si nadie llega al extremo, gana quien haya avanzado más.\n"
+    "Si la barra queda centrada, se juega una prórroga de 10 segundos. El torneo consta de cinco rondas.\n"
     "¡Mucha suerte!"
 )
 
@@ -380,6 +381,7 @@ class Juego:
         self.t = 0.0
         self.mujeres = 0
         self.hombres = 0
+        self.ultimo_empuje = None
         self.barra_pos = 0.5
         self.pulso_m = 0.0
         self.pulso_h = 0.0
@@ -545,11 +547,10 @@ class Juego:
         if self.estado != "juego":
             return
         self.sonar("click")
+        self.ultimo_empuje = quien
         if quien == "m":
-            self.mujeres += 1
             self.pulso_m = 0.25
         else:
-            self.hombres += 1
             self.pulso_h = 0.25
         # Cada pulsación desplaza claramente la línea de fuerza.
         # La posición es compartida: si ambos equipos pulsan exactamente igual,
@@ -578,6 +579,7 @@ class Juego:
             return
         self.ronda += 1
         self.mujeres = self.hombres = 0
+        self.ultimo_empuje = None
         self.barra_pos = 0.5
         self.tiempo_restante = 40.0
         self.tiempo_extra = 0.0
@@ -869,7 +871,7 @@ class Juego:
                 elif self.tiempo_extra > 0:
                     self.tiempo_extra -= dt
                     if self.tiempo_extra <= 0:
-                        self.finalizar_ronda("m" if self.barra_pos < 0.5 else "h" if self.barra_pos > 0.5 else ("m" if self.mujeres > self.hombres else "h"))
+                        self.finalizar_ronda("m" if self.barra_pos < 0.5 else "h" if self.barra_pos > 0.5 else (self.ultimo_empuje or "m"))
                 else:
                     self.finalizar_ronda("m" if self.barra_pos < 0.5 else "h")
         self.pulso_m = max(0.0, self.pulso_m - dt)
@@ -976,83 +978,90 @@ class Juego:
         p = self.pantalla
         n1, n2 = self.nombres()
         p.blit(self.fondo_oscuro, (0, 0))
-        escribir(p, "AJUSTES", fuente(56), DORADO, (ANCHO // 2, 42))
-        y0, paso = 90, 52
-        fe = fuente(24, False)
+        escribir(p, "AJUSTES DEL JUEGO", fuente(48), DORADO, (ANCHO // 2, 38))
 
-        # ----- columna izquierda: teclas, textos, meta
-        xl = 40
-        teclas = [("mujeres", "Tecla " + n1), ("hombres", "Tecla " + n2),
-                  ("reiniciar", "Tecla REINICIAR"), ("reglas", "Tecla REGLAS")]
-        for i, (k, etq) in enumerate(teclas):
+        # Paneles separados para que cada función se lea con claridad.
+        panel_izq = pygame.Rect(28, 82, 600, 520)
+        panel_der = pygame.Rect(648, 82, 604, 520)
+        for caja in (panel_izq, panel_der):
+            pygame.draw.rect(p, (20, 25, 58), caja, border_radius=18)
+            pygame.draw.rect(p, (125, 145, 210), caja, 2, border_radius=18)
+
+        escribir(p, "CONTROLES Y PARTIDA", fuente(27), ROSA, (panel_izq.centerx, 108))
+        escribir(p, "PERSONALIZACIÓN", fuente(27), AZUL, (panel_der.centerx, 108))
+        fe = fuente(20, False)
+        y0, paso = 145, 43
+        xl = 48
+
+        controles = [
+            ("mujeres", "Botón / tecla " + n1),
+            ("hombres", "Botón / tecla " + n2),
+            ("reiniciar", "Reiniciar partida"),
+            ("reglas", "Leer reglas"),
+        ]
+        for i, (k, etq) in enumerate(controles):
             y = y0 + i * paso
-            escribir(p, etq, fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
+            escribir(p, etq, fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
             espera = self.esperando == k
-            txt = "PRESIONA UNA TECLA..." if espera else self.nombre_tecla(k)
-            self.boton((xl + 300, y, 270, 44), txt, lambda k=k: self.esperar_tecla(k),
-                       (200, 120, 0) if espera else (40, 60, 120))
+            txt = "PRESIONA..." if espera else self.nombre_tecla(k)
+            self.boton((xl + 300, y, 235, 38), txt, lambda k=k: self.esperar_tecla(k),
+                       (190, 105, 0) if espera else (40, 60, 120), fuente(19))
+
         y = y0 + 4 * paso
-        escribir(p, "Modo de control", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        self.boton((xl + 300, y, 270, 44), self.cfg["modo_control"].upper(), self.cambiar_modo_control, VERDE)
+        escribir(p, "Tipo de control", fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 235, 38), self.cfg["modo_control"].upper(),
+                   self.cambiar_modo_control, VERDE, fuente(19))
         y += paso
-        escribir(p, "Velocidad de empuje", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        self.boton((xl + 300, y, 60, 44), "-", lambda: self.cambiar_velocidad(-0.2))
-        escribir(p, "%.1fx" % self.cfg.get("velocidad_barra", 1.0), fuente(28), DORADO, (xl + 405, y + 22))
-        self.boton((xl + 500, y, 60, 44), "+", lambda: self.cambiar_velocidad(0.2))
+        escribir(p, "Fuerza de empuje", fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 48, 38), "-", lambda: self.cambiar_velocidad(-0.2), fnt=fuente(22))
+        escribir(p, "%.1fx" % self.cfg.get("velocidad_barra", 1.0), fuente(23), DORADO,
+                 (xl + 412, y + 19))
+        self.boton((xl + 476, y, 48, 38), "+", lambda: self.cambiar_velocidad(0.2), fnt=fuente(22))
         y += paso
-        escribir(p, "Nombre equipo 1", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        self.boton((xl + 300, y, 270, 44), n1, lambda: self.editar_nombre(0), (170, 20, 110))
+        escribir(p, "Nombre equipo rosa", fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 235, 38), n1, lambda: self.editar_nombre(0), (170, 20, 110), fuente(18))
         y += paso
-        escribir(p, "Nombre equipo 2", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        self.boton((xl + 300, y, 270, 44), n2, lambda: self.editar_nombre(1), (15, 50, 160))
+        escribir(p, "Nombre equipo azul", fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 235, 38), n2, lambda: self.editar_nombre(1), (15, 50, 160), fuente(18))
         y += paso
-        escribir(p, "Reglas (texto y voz)", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        self.boton((xl + 300, y, 270, 44), "EDITAR REGLAS", self.editar_reglas)
+        escribir(p, "Texto y voz de reglas", fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 235, 38), "EDITAR REGLAS", self.editar_reglas, fnt=fuente(18))
         y += paso
-        escribir(p, "Meta de puntos", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        bx = xl + 300
-        for txt, d in (("-5", -5), ("-1", -1)):
-            self.boton((bx, y, 52, 44), txt, lambda d=d: self.cambiar_meta(d))
-            bx += 58
-        escribir(p, str(self.cfg["meta"]), fuente(30), DORADO, (bx + 36, y + 22), sombra=False)
-        bx += 76
-        for txt, d in (("+1", 1), ("+5", 5)):
-            self.boton((bx, y, 52, 44), txt, lambda d=d: self.cambiar_meta(d))
-            bx += 58
-        y += paso
-        escribir(p, "Pantalla completa (F11)", fe, BLANCO, (xl, y + 22), sombra=False, alin="midleft")
-        self.boton((xl + 300, y, 270, 44), "SÍ" if self.cfg["pantalla_completa"] else "NO",
-                   self.alternar_pantalla, VERDE if self.cfg["pantalla_completa"] else (90, 40, 40))
+        escribir(p, "Pantalla completa", fe, BLANCO, (xl, y + 20), sombra=False, alin="midleft")
+        self.boton((xl + 300, y, 235, 38), "ACTIVADA" if self.cfg["pantalla_completa"] else "DESACTIVADA",
+                   self.alternar_pantalla, VERDE if self.cfg["pantalla_completa"] else (90, 40, 40), fuente(17))
 
-        # ----- columna derecha: imagenes, musica y efectos
-        xr = 650
-        filas = [("bienvenida", "Imagen de bienvenida", "img"),
-                 ("img_m", "Imagen " + n1, "img"),
-                 ("img_h", "Imagen " + n2, "img"),
-                 ("fondo_m", "Fondo rosa mujeres", "img"),
-                 ("fondo_h", "Fondo azul hombres", "img"),
-                 ("musica_fondo", "Música de fondo", "aud"),
-                 ("musica_vic_m", "Celebración " + n1, "aud"),
-                 ("musica_vic_h", "Celebración " + n2, "aud"),
-                 ("sfx_click", "Efecto: click", "aud"),
-                 ("sfx_conteo", "Efecto: conteo", "aud"),
-                 ("sfx_inicio", "Efecto: iniciamos", "aud")]
+        xr = 668
+        filas = [
+            ("bienvenida", "Imagen de bienvenida", "img"),
+            ("img_m", "Personaje equipo rosa", "img"),
+            ("img_h", "Personaje equipo azul", "img"),
+            ("fondo_m", "Fondo equipo rosa", "img"),
+            ("fondo_h", "Fondo equipo azul", "img"),
+            ("musica_fondo", "Música durante el juego", "aud"),
+            ("musica_vic_m", "Victoria equipo rosa", "aud"),
+            ("musica_vic_h", "Victoria equipo azul", "aud"),
+            ("sfx_click", "Sonido de pulsación", "aud"),
+            ("sfx_conteo", "Sonido de cuenta", "aud"),
+            ("sfx_inicio", "Sonido de inicio", "aud"),
+        ]
         for i, (k, etq, tipo) in enumerate(filas):
-            y = y0 + i * paso
+            y = 143 + i * 39
             custom = k in self.cfg["archivos"]
-            escribir(p, etq + (" *" if custom else ""), fe, DORADO if custom else BLANCO,
-                     (xr, y + 22), sombra=False, alin="midleft")
-            self.boton((xr + 310, y, 140, 44), "ELEGIR", lambda k=k, t=tipo: self.elegir_archivo(k, t))
-            self.boton((xr + 460, y, 140, 44), "ORIGINAL", lambda k=k: self.archivo_original(k), (90, 50, 50))
+            escribir(p, etq + ("  ✓" if custom else ""), fuente(18, False),
+                     DORADO if custom else BLANCO, (xr, y + 19), sombra=False, alin="midleft")
+            self.boton((xr + 345, y, 92, 34), "CAMBIAR", lambda k=k, t=tipo: self.elegir_archivo(k, t),
+                       (40, 70, 125), fuente(15))
+            self.boton((xr + 444, y, 92, 34), "ORIGINAL", lambda k=k: self.archivo_original(k),
+                       (100, 45, 55), fuente(14))
 
-        # ----- pie
-        self.dibujar_aviso(590)
-        escribir(p, "* = archivo personalizado", fuente(18, False), (200, 200, 220), (xr, 572),
-                 sombra=False, alin="midleft")
-        y = 625
-        self.boton((40, y, 400, 56), "CARPETA PERSONALIZADA", self.abrir_carpeta)
-        self.boton((470, y, 340, 56), "RESTAURAR TODO", self.restaurar_todo, (140, 40, 40))
-        self.boton((840, y, 400, 56), "VOLVER (ESC)", self.volver_menu, VERDE)
+        if self.mensaje:
+            escribir(p, self.mensaje, fuente(18, False), DORADO, (ANCHO // 2, 613))
+        escribir(p, "✓ = archivo personalizado", fuente(16, False), (200, 200, 220),
+                 (ANCHO // 2, 635), sombra=False)
+        self.boton((35, 660, 330, 46), "ABRIR CARPETA PERSONALIZADA", self.abrir_carpeta, fnt=fuente(16))
+        self.boton((390, 660, 250, 46), "RESTAURAR TODO", self.restaurar_todo, (140, 40, 40), fuente(17))
+        self.boton((665, 660, 580, 46), "VOLVER AL MENÚ", self.volver_menu, VERDE, fuente(20))
 
     # ---------------------------------------------------------------- dibujo: editor
     def dibujar_editor(self):
@@ -1189,7 +1198,7 @@ class Juego:
         sh = pygame.transform.rotozoom(f.render(msg, True, NEGRO), 0, esc)
         p.blit(sh, sh.get_rect(center=(ANCHO // 2 + 6, 250 + 6)))
         p.blit(s, s.get_rect(center=(ANCHO // 2, 250)))
-        escribir(p, "%d  -  %d" % (self.mujeres, self.hombres), fuente(130), DORADO, (ANCHO // 2, 420))
+        escribir(p, "RONDA GANADA", fuente(64), DORADO, (ANCHO // 2, 420))
         if int(self.t * 2) % 2 == 0:
             m = "PRESIONA [%s] PARA SIGUIENTE RONDA" % self.nombre_tecla("reiniciar")
             escribir(p, m, fuente_ajustada(m, ANCHO - 200, 52), BLANCO, (ANCHO // 2, 600))
