@@ -77,8 +77,9 @@ REGLAS_DEFECTO = (
     "Hay dos equipos: {EQ1} y {EQ2}.\n"
     "Cuando termine el conteo regresivo, cada equipo presiona su tecla lo más rápido que pueda. "
     "El equipo {EQ1} usa la tecla {TECLA1} y el equipo {EQ2} usa la tecla {TECLA2}.\n"
-    "Cada pulsación suma un punto y la barra del centro se mueve hacia el equipo que va ganando.\n"
-    "El primer equipo que llegue a {META} puntos gana la batalla.\n"
+    "Cada pulsación empuja la barra central hacia el lado de tu equipo.\n"
+    "La ronda dura 40 segundos: gana quien llegue al extremo o quien tenga mayor avance al terminar.\n"
+    "Si hay empate, se juega una prórroga de 10 segundos. El torneo consta de cinco rondas.\n"
     "¡Mucha suerte!"
 )
 
@@ -528,10 +529,6 @@ class Juego:
         self.mujeres = 0
         self.hombres = 0
         self.barra_pos = 0.5
-        self.tiempo_restante = 40.0
-        self.tiempo_extra = 0.0
-        self.ronda = 1
-        self.puntos_ronda = {"m": 0, "h": 0}
         self.tiempo_restante = 40.0
         self.tiempo_extra = 0.0
         self.ronda = 1
