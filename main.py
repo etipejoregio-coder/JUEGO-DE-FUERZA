@@ -536,6 +536,7 @@ class Juego:
         self.mujeres = 0
         self.hombres = 0
         self.barra_pos = 0.5
+        self.barra_objetivo = 0.5
         self.tiempo_restante = 40.0
         self.tiempo_extra = 0.0
         self.ronda = 1
@@ -552,28 +553,20 @@ class Juego:
         if self.estado != "juego":
             return
         self.sonar("click")
-        anterior = self.ultimo_empuje
-        mismo_instante = self.ultimo_empuje_t == self.t and anterior is not None and anterior != quien
         self.ultimo_empuje = quien
         self.ultimo_empuje_t = self.t
         if quien == "m":
-            self.pulso_m = 0.25
+            self.pulso_m = 0.32
+            self.mujeres += 1
+            if self.mujeres >= 5:
+                self.mujeres = 0
+                self.barra_objetivo = max(0.015, self.barra_objetivo - 0.045)
         else:
-            self.pulso_h = 0.25
-        # Cada pulsación desplaza claramente la línea de fuerza.
-        # La posición es compartida: si ambos equipos pulsan exactamente igual,
-        # la barra se mantiene equilibrada, pero los personajes sí muestran el empuje.
-        velocidad = 0.038 * float(self.cfg.get("velocidad_barra", 1.0))
-        desplazamiento = (-velocidad if quien == "m" else velocidad)
-        # Si los dos equipos pulsan en el mismo instante, el último toque deja
-        # un pequeño desplazamiento visible para que el centro no parezca congelado.
-        if mismo_instante:
-            desplazamiento *= 1.35
-        self.barra_pos = max(0.0, min(1.0, self.barra_pos + desplazamiento))
-        if self.barra_pos <= 0.015:
-            self.finalizar_ronda("m")
-        elif self.barra_pos >= 0.985:
-            self.finalizar_ronda("h")
+            self.pulso_h = 0.32
+            self.hombres += 1
+            if self.hombres >= 5:
+                self.hombres = 0
+                self.barra_objetivo = min(0.985, self.barra_objetivo + 0.045)
 
     def finalizar_ronda(self, quien):
         if self.estado != "juego":
@@ -592,6 +585,7 @@ class Juego:
             return
         self.ronda += 1
         self.mujeres = self.hombres = 0
+        self.barra_objetivo = 0.5
         self.ultimo_empuje = None
         self.ultimo_empuje_t = -1.0
         self.barra_pos = 0.5
@@ -878,6 +872,20 @@ class Juego:
     def actualizar(self, dt):
         self.t += dt
         if self.estado == "juego":
+            # La barra viaja suavemente hacia la nueva posición ganada:
+            # cada bloque de 5 pulsaciones se siente como un forcejeo, no un salto.
+            diferencia = self.barra_objetivo - self.barra_pos
+            paso = min(abs(diferencia), 0.085 * dt)
+            if diferencia > 0:
+                self.barra_pos += paso
+            elif diferencia < 0:
+                self.barra_pos -= paso
+            if self.barra_pos <= 0.015:
+                self.barra_pos = 0.015
+                self.finalizar_ronda("m")
+            elif self.barra_pos >= 0.985:
+                self.barra_pos = 0.985
+                self.finalizar_ronda("h")
             self.tiempo_restante -= dt
             if self.tiempo_restante <= 0:
                 if self.tiempo_extra <= 0 and abs(self.barra_pos - 0.5) < 0.002:
