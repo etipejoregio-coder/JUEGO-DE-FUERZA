@@ -62,6 +62,7 @@ ARCHIVOS_DEFECTO = {
     "img_h": "assets/images/chico.png",
     "victoria_img_m": "assets/images/victoria_mujeres.png",
     "victoria_img_h": "assets/images/victoria_hombres.png",
+    "rayo_super_fuerza": "assets/images/rayo_super_fuerza.png",
     "adorno_m1": "assets/images/adorno_m1.png",
     "adorno_m2": "assets/images/adorno_m2.png",
     "adorno_h1": "assets/images/adorno_h1.png",
