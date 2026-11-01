@@ -436,6 +436,7 @@ class Juego:
         self.img = {}
         self.victoria_img_m = cargar_cubrir(resolver(c, "victoria_img_m"))
         self.victoria_img_h = cargar_cubrir(resolver(c, "victoria_img_h"))
+        self.rayo_super_fuerza = cargar_imagen(resolver(c, "rayo_super_fuerza"), 105)
         for k in ("img_m", "img_h"):
             r = resolver(c, k)
             self.img[k + "_j"] = cargar_imagen(r, 500)
@@ -1091,6 +1092,7 @@ class Juego:
             ("musica_fondo", "Música durante el juego", "aud"),
             ("victoria_img_h", "Imagen victoria hombres", "img"),
             ("victoria_img_m", "Imagen victoria mujeres", "img"),
+            ("rayo_super_fuerza", "Imagen efecto SUPER FUERZA", "img"),
             ("musica_vic_m", "Música victoria mujeres", "aud"),
             ("musica_vic_h", "Música victoria hombres", "aud"),
             ("sfx_click", "Sonido de pulsación", "aud"),
@@ -1205,16 +1207,33 @@ class Juego:
         escribir(p, "[%s]" % self.nombre_tecla("hombres"), fuente(22), BLANCO, (ANCHO - 190, ALTO - 18))
 
         if self.mensaje_fuerza_t > 0:
-            escala = 1.0 + 0.10 * math.sin(self.t * 24)
-            texto = fuente(58).render(self.mensaje_fuerza, True, DORADO)
+            # Efecto en la franja inferior para no tapar a los jugadores.
+            centro_y = ALTO - 78
+            if self.rayo_super_fuerza:
+                rayo = self.rayo_super_fuerza
+                factor = 1.0 + 0.08 * math.sin(self.t * 24)
+                rw = max(1, int(rayo.get_width() * factor))
+                rh = max(1, int(rayo.get_height() * factor))
+                rayo = pygame.transform.smoothscale(rayo, (rw, rh))
+                p.blit(rayo, rayo.get_rect(center=(ANCHO // 2, ALTO - 175)))
+            else:
+                # Rayo dorado predeterminado dibujado con vectores.
+                puntos = [(ANCHO//2-18, ALTO-250), (ANCHO//2+18, ALTO-250),
+                          (ANCHO//2+2, ALTO-207), (ANCHO//2+28, ALTO-207),
+                          (ANCHO//2-22, ALTO-145), (ANCHO//2-8, ALTO-193),
+                          (ANCHO//2-32, ALTO-193)]
+                pygame.draw.polygon(p, (255, 150, 20), puntos)
+                pygame.draw.polygon(p, (255, 235, 90), puntos, 5)
+            escala = 1.0 + 0.07 * math.sin(self.t * 24)
+            texto = fuente(42).render(self.mensaje_fuerza, True, DORADO)
             texto = pygame.transform.rotozoom(texto, 0, escala)
-            sombra = fuente(58).render(self.mensaje_fuerza, True, NEGRO)
+            sombra = fuente(42).render(self.mensaje_fuerza, True, NEGRO)
             sombra = pygame.transform.rotozoom(sombra, 0, escala)
-            rect = texto.get_rect(center=(ANCHO // 2, ALTO // 2 - 105))
-            fondo = rect.inflate(54, 30)
-            pygame.draw.rect(p, (18, 12, 38), fondo, border_radius=22)
-            pygame.draw.rect(p, DORADO, fondo, 4, border_radius=22)
-            p.blit(sombra, sombra.get_rect(center=(rect.centerx + 4, rect.centery + 4)))
+            rect = texto.get_rect(center=(ANCHO // 2, centro_y))
+            fondo = rect.inflate(38, 18)
+            pygame.draw.rect(p, (18, 12, 38), fondo, border_radius=16)
+            pygame.draw.rect(p, DORADO, fondo, 3, border_radius=16)
+            p.blit(sombra, sombra.get_rect(center=(rect.centerx + 3, rect.centery + 3)))
             p.blit(texto, rect)
 
         self.boton((ANCHO - 200, 12, 185, 42), "REINICIAR (%s)" % self.nombre_tecla("reiniciar"),
