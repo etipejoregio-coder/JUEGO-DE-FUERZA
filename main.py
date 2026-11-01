@@ -388,6 +388,7 @@ class Juego:
         self.combo_h = 0
         self.mensaje_fuerza = ""
         self.mensaje_fuerza_t = 0.0
+        self.efecto_super = "RAYO"
         self.ultimo_empuje = None
         self.ultimo_empuje_t = -1.0
         self.barra_pos = 0.5
@@ -574,10 +575,15 @@ class Juego:
                     self.barra_objetivo = max(0.015, self.barra_objetivo - 0.045)
                     self.combo_m = 1
                 else:
-                    self.barra_objetivo = max(0.015, self.barra_objetivo - 0.075)
+                    efecto, potencia = random.choice([
+                        ("RAYO", 0.060), ("FUEGO", 0.075), ("EXPLOSION", 0.090),
+                        ("TORNADO", 0.105), ("ENERGIA", 0.120)
+                    ])
+                    self.barra_objetivo = max(0.015, self.barra_objetivo - potencia)
                     self.combo_m = 0
+                    self.efecto_super = efecto
                     self.mensaje_fuerza = "¡SUPER FUERZA MUJERES!"
-                    self.mensaje_fuerza_t = 1.35
+                    self.mensaje_fuerza_t = 1.65
         else:
             self.pulso_h = 0.32
             self.hombres += 1
@@ -587,10 +593,15 @@ class Juego:
                     self.barra_objetivo = min(0.985, self.barra_objetivo + 0.045)
                     self.combo_h = 1
                 else:
-                    self.barra_objetivo = min(0.985, self.barra_objetivo + 0.075)
+                    efecto, potencia = random.choice([
+                        ("RAYO", 0.060), ("FUEGO", 0.075), ("EXPLOSION", 0.090),
+                        ("TORNADO", 0.105), ("ENERGIA", 0.120)
+                    ])
+                    self.barra_objetivo = min(0.985, self.barra_objetivo + potencia)
                     self.combo_h = 0
+                    self.efecto_super = efecto
                     self.mensaje_fuerza = "¡SUPER FUERZA HOMBRES!"
-                    self.mensaje_fuerza_t = 1.35
+                    self.mensaje_fuerza_t = 1.65
 
     def finalizar_ronda(self, quien):
         if self.estado != "juego":
@@ -1191,15 +1202,12 @@ class Juego:
 
         self.dibujar_nombres()
 
-        # contador superior
-        pill = pygame.Rect(0, 0, 360, 70)
-        pill.center = (ANCHO // 2, 46)
-        pygame.draw.rect(p, (20, 20, 44), pill, border_radius=30)
-        pygame.draw.rect(p, BLANCO, pill, 4, border_radius=30)
-        escribir(p, "RONDA %d/5" % self.ronda, fuente(25), DORADO, (ANCHO // 2, 96))
+        # Marcador superior limpio: sin pastilla negra.
+        escribir(p, "SERIE %d - %d" % (self.puntos_ronda["m"], self.puntos_ronda["h"]),
+                 fuente(25), DORADO, (ANCHO // 2, 42))
+        escribir(p, "RONDA %d/5" % self.ronda, fuente(25), DORADO, (ANCHO // 2, 88))
         reloj_txt = "PRORROGA %02d" % max(0, int(self.tiempo_extra)) if self.tiempo_extra > 0 else "TIEMPO %02d" % max(0, int(self.tiempo_restante))
-        escribir(p, reloj_txt, fuente(28), BLANCO, (ANCHO // 2, 130))
-        escribir(p, "SERIE %d - %d" % (self.puntos_ronda["m"], self.puntos_ronda["h"]), fuente(22), DORADO, (ANCHO // 2, 160))
+        escribir(p, reloj_txt, fuente(28), BLANCO, (ANCHO // 2, 125))
 
         # Indicadores de control: se muestran las teclas, nunca un conteo de pulsaciones.
         escribir(p, "EMPUJA", fuente(25), BLANCO, (190, ALTO - 48))
@@ -1210,21 +1218,47 @@ class Juego:
         if self.mensaje_fuerza_t > 0:
             # Efecto en la franja inferior para no tapar a los jugadores.
             centro_y = ALTO - 78
-            if self.rayo_super_fuerza:
-                rayo = self.rayo_super_fuerza
-                factor = 1.0 + 0.08 * math.sin(self.t * 24)
-                rw = max(1, int(rayo.get_width() * factor))
-                rh = max(1, int(rayo.get_height() * factor))
-                rayo = pygame.transform.smoothscale(rayo, (rw, rh))
-                p.blit(rayo, rayo.get_rect(center=(ANCHO // 2, ALTO - 175)))
+            # Cada SUPER FUERZA tiene una animación visual distinta.
+            cx, cy = ANCHO // 2, ALTO - 175
+            pulso = 1.0 + 0.10 * math.sin(self.t * 28)
+            if self.efecto_super == "RAYO":
+                if self.rayo_super_fuerza:
+                    rayo = self.rayo_super_fuerza
+                    rw, rh = max(1, int(rayo.get_width()*pulso)), max(1, int(rayo.get_height()*pulso))
+                    p.blit(pygame.transform.smoothscale(rayo, (rw, rh)), rayo.get_rect(center=(cx, cy)))
+                else:
+                    pts = [(cx-18,cy-55),(cx+18,cy-55),(cx+2,cy-12),(cx+28,cy-12),(cx-22,cy+52),(cx-8,cy+5),(cx-32,cy+5)]
+                    pygame.draw.polygon(p,(255,150,20),pts)
+                    pygame.draw.polygon(p,(255,235,90),pts,5)
+            elif self.efecto_super == "FUEGO":
+                for i in range(7):
+                    x = cx + int((i-3)*19*pulso)
+                    h = int((42 + 16*math.sin(self.t*22+i))*pulso)
+                    pygame.draw.polygon(p,(255,75+ i*15,15),[(x-12,cy+35),(x-8,cy-h//2),(x,cy-h),(x+10,cy-h//2),(x+13,cy+35)])
+                    pygame.draw.polygon(p,(255,220,45),[(x-5,cy+25),(x,cy-h//2),(x+6,cy+25)])
+            elif self.efecto_super == "EXPLOSION":
+                radio = int(48*pulso)
+                pygame.draw.circle(p,(255,95,20),(cx,cy),radio,8)
+                pygame.draw.circle(p,(255,220,50),(cx,cy),int(radio*.65),5)
+                for i in range(12):
+                    ang = self.t*2 + i*math.tau/12
+                    x1,y1 = cx+int(math.cos(ang)*radio*.7),cy+int(math.sin(ang)*radio*.7)
+                    x2,y2 = cx+int(math.cos(ang)*radio*1.35),cy+int(math.sin(ang)*radio*1.35)
+                    pygame.draw.line(p,(255,190,35),(x1,y1),(x2,y2),5)
+            elif self.efecto_super == "TORNADO":
+                for i in range(5):
+                    ancho = int((18+i*8)*pulso)
+                    yy = cy-48+i*22
+                    pygame.draw.arc(p,(80,220,255),(cx-ancho,yy-13,ancho*2,26),0.2,2.95,5)
+                pygame.draw.line(p,(170,245,255),(cx,cy-58),(cx,cy+48),5)
             else:
-                # Rayo dorado predeterminado dibujado con vectores.
-                puntos = [(ANCHO//2-18, ALTO-250), (ANCHO//2+18, ALTO-250),
-                          (ANCHO//2+2, ALTO-207), (ANCHO//2+28, ALTO-207),
-                          (ANCHO//2-22, ALTO-145), (ANCHO//2-8, ALTO-193),
-                          (ANCHO//2-32, ALTO-193)]
-                pygame.draw.polygon(p, (255, 150, 20), puntos)
-                pygame.draw.polygon(p, (255, 235, 90), puntos, 5)
+                for i in range(3):
+                    radio = int((28+i*18)*pulso)
+                    pygame.draw.circle(p,(80,220,255),(cx,cy),radio,4)
+                for i in range(8):
+                    ang = self.t*3+i*math.tau/8
+                    x,y = cx+int(math.cos(ang)*62),cy+int(math.sin(ang)*62)
+                    pygame.draw.circle(p,(255,245,100),(x,y),7)
             escala = 1.0 + 0.07 * math.sin(self.t * 24)
             texto = fuente(42).render(self.mensaje_fuerza, True, DORADO)
             texto = pygame.transform.rotozoom(texto, 0, escala)
