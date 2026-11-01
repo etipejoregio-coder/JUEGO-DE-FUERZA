@@ -1146,13 +1146,11 @@ class Juego:
         escribir(p, reloj_txt, fuente(28), BLANCO, (ANCHO // 2, 130))
         escribir(p, "SERIE %d - %d" % (self.puntos_ronda["m"], self.puntos_ronda["h"]), fuente(22), DORADO, (ANCHO // 2, 160))
 
-        # numeros grandes abajo
-        fm = fuente(180 if self.pulso_m > 0 else 150)
-        fh = fuente(180 if self.pulso_h > 0 else 150)
-        escribir(p, str(self.mujeres), fm, BLANCO, (190, ALTO - 120), off=6)
-        escribir(p, str(self.hombres), fh, BLANCO, (ANCHO - 190, ALTO - 120), off=6)
-        escribir(p, "[%s]" % self.nombre_tecla("mujeres"), fuente(26), BLANCO, (190, ALTO - 28))
-        escribir(p, "[%s]" % self.nombre_tecla("hombres"), fuente(26), BLANCO, (ANCHO - 190, ALTO - 28))
+        # Indicadores de control: se muestran las teclas, nunca un conteo de pulsaciones.
+        escribir(p, "EMPUJA", fuente(25), BLANCO, (190, ALTO - 48))
+        escribir(p, "[%s]" % self.nombre_tecla("mujeres"), fuente(22), BLANCO, (190, ALTO - 18))
+        escribir(p, "EMPUJA", fuente(25), BLANCO, (ANCHO - 190, ALTO - 48))
+        escribir(p, "[%s]" % self.nombre_tecla("hombres"), fuente(22), BLANCO, (ANCHO - 190, ALTO - 18))
 
         self.boton((ANCHO - 200, 12, 185, 42), "REINICIAR (%s)" % self.nombre_tecla("reiniciar"),
                    self.volver_menu, (200, 40, 60), fuente(18))
