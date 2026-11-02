@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carrera de Caballos | Desafíos Locos</title>
+<style>
+:root{--pink:#ff3e9d;--blue:#29a8ff;--ink:#10172d;--gold:#ffd45b}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#263d70,#10172d 65%);font-family:Arial,Helvetica,sans-serif;color:#fff;min-height:100vh}
+button,input,select{font:inherit}button{cursor:pointer;border:0;border-radius:12px;padding:11px 17px;font-weight:900;color:#111a32;background:linear-gradient(135deg,#fff,#cfe6ff);box-shadow:0 4px 0 #8298b8}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #8298b8}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px clamp(14px,3vw,36px);max-width:1500px;margin:auto}
+.brand{font-weight:1000;letter-spacing:1.5px;font-size:clamp(18px,3vw,28px)}.brand span{color:var(--gold)}.tag{font-size:11px;color:#b9c8e8;letter-spacing:2px}
+main{max-width:1450px;margin:auto;padding:0 18px 28px}
+.topbar{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:5px 0 16px}
+.pill{background:#111a31;border:1px solid #40527b;border-radius:99px;padding:9px 18px;font-weight:900;box-shadow:0 5px 18px #0004}.pill b{color:var(--gold)}
+.arena{background:linear-gradient(180deg,#233a65,#14203e);border:2px solid #6077a5;border-radius:25px;padding:clamp(10px,2vw,22px);box-shadow:0 20px 50px #0008;overflow:hidden}
+.track{position:relative;min-height:390px;border-radius:18px;overflow:hidden;background:linear-gradient(#65c9ed 0 38%,#9edb76 38% 59%,#b87a47 59% 100%);background-size:cover;background-position:center}
+.track:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#ffffff13 1px,transparent 1px);background-size:70px 100%;pointer-events:none}
+.finish{position:absolute;right:4%;top:0;bottom:0;width:26px;background:repeating-conic-gradient(#fff 0 25%,#1a2340 0 50%) 0/24px 24px;box-shadow:0 0 20px #fff8;z-index:3}
+.lane{height:50%;position:relative;border-bottom:4px dashed #fff9;display:flex;align-items:center;padding:0 15px}.lane:last-child{border:0}
+.lane-label{position:absolute;left:16px;top:12px;font-weight:1000;text-shadow:0 2px 5px #0008;font-size:13px;letter-spacing:1px}
+.runner{position:absolute;left:5%;top:50%;transform:translateY(-40%);width:125px;height:125px;display:grid;place-items:center;transition:left .34s cubic-bezier(.2,.8,.2,1);z-index:2}
+.horse{font-size:90px;filter:drop-shadow(0 9px 5px #0005);animation:gallop .55s infinite alternate;display:block}
+.runner img{max-width:120px;max-height:115px;object-fit:contain;filter:drop-shadow(0 7px 4px #0005)}
+@keyframes gallop{from{transform:translateY(2px) rotate(-3deg)}to{transform:translateY(-7px) rotate(3deg)}}
+.lane.pink{background:linear-gradient(90deg,#ff3e9d44,transparent)}.lane.blue{background:linear-gradient(90deg,#29a8ff44,transparent)}
+.progress{position:absolute;bottom:9px;left:18px;right:65px;height:8px;background:#07112666;border-radius:20px;overflow:hidden}.progress i{display:block;height:100%;width:0;transition:width .3s;border-radius:20px}.pink .progress i{background:var(--pink)}.blue .progress i{background:var(--blue)}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.player{border-radius:18px;padding:15px;background:#101a33;border:1px solid #52668f;text-align:center}.player.pink{box-shadow:inset 0 0 25px #ff3e9d20}.player.blue{box-shadow:inset 0 0 25px #29a8ff20}
+.player h2{margin:0 0 5px;font-size:clamp(18px,2.5vw,25px)}.pink h2{color:#ff78bb}.blue h2{color:#62c4ff}.count{font-size:14px;color:#c8d5f0;margin:7px}.meter{display:flex;justify-content:center;gap:7px;margin:10px}.dot{width:15px;height:15px;border-radius:50%;background:#364360;border:1px solid #7180a0}.pink .dot.on{background:var(--pink);box-shadow:0 0 12px var(--pink)}.blue .dot.on{background:var(--blue);box-shadow:0 0 12px var(--blue)}
+.tap{width:100%;font-size:19px;padding:16px;color:white;margin-top:4px}.pink .tap{background:linear-gradient(135deg,#ff70b7,#d71976);box-shadow:0 5px 0 #8f1550}.blue .tap{background:linear-gradient(135deg,#63c9ff,#0878d4);box-shadow:0 5px 0 #064b8a}
+.actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:17px 0}.status{text-align:center;min-height:32px;font-weight:900;font-size:clamp(17px,2.5vw,24px);color:var(--gold);text-shadow:0 2px 5px #0008}
+details{background:#111a31;border:1px solid #40527b;border-radius:17px;margin-top:18px;padding:14px 17px}summary{font-weight:1000;cursor:pointer;letter-spacing:.5px;font-size:18px}.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;margin-top:15px}.field{display:flex;flex-direction:column;gap:6px;color:#c9d7f2;font-size:13px}.field input,.field select{width:100%;background:#202e50;color:white;border:1px solid #657ba7;border-radius:9px;padding:9px}.field small{color:#93a8d0;line-height:1.35}.instructions{line-height:1.65;color:#dce7ff}.footer{text-align:center;color:#91a4cc;font-size:12px;padding:20px}
+@media(max-width:650px){.controls{grid-template-columns:1fr}.track{min-height:340px}.runner{width:95px}.horse{font-size:68px}.runner img{max-width:90px;max-height:90px}.lane{height:50%}.topbar{gap:6px}.pill{padding:8px 12px;font-size:12px}}
+</style>
+</head>
+<body>
+<header><div><div class="brand">DESAFÍOS <span>LOCOS</span></div><div class="tag">CARRERA DE CABALLOS</div></div><div class="tag">2 COMPETIDORES · ¡A GALOPAR!</div></header>
+<main>
+<div class="topbar"><div class="pill">MODO: <b id="modeLabel">FÁCIL</b></div><div class="pill">PULSACIONES: <b id="pulseLabel">5</b></div><div class="pill">META: <b>100%</b></div></div>
+<section class="arena">
+<div class="track" id="track">
+<div class="lane pink"><div class="lane-label">ROSA</div><div class="runner" id="pinkRunner"><span class="horse" id="pinkEmoji">🐎</span></div><div class="progress"><i id="pinkProgress"></i></div></div>
+<div class="lane blue"><div class="lane-label">AZUL</div><div class="runner" id="blueRunner"><span class="horse" id="blueEmoji">🐎</span></div><div class="progress"><i id="blueProgress"></i></div></div>
+<div class="finish" title="Meta"></div>
+</div>
+<div class="controls">
+<div class="player pink"><h2>🐎 CABALLO ROSA</h2><div class="count" id="pinkCount">0 de 5 pulsaciones</div><div class="meter" id="pinkMeter"></div><button class="tap" id="pinkTap">¡PULSAR ROSA! (A)</button></div>
+<div class="player blue"><h2>🐎 CABALLO AZUL</h2><div class="count" id="blueCount">0 de 5 pulsaciones</div><div class="meter" id="blueMeter"></div><button class="tap" id="blueTap">¡PULSAR AZUL! (L)</button></div>
+</div>
+<div class="status" id="status" aria-live="polite">¡PREPÁRENSE! PRESIONA INICIAR CARRERA</div>
+<div class="actions"><button id="startBtn">🏁 INICIAR CARRERA</button><button id="resetBtn">↻ REINICIAR</button><button id="soundBtn">🔊 SONIDO: ACTIVADO</button></div>
+</section>
+<details open><summary>⚙️ PANEL DE EDICIÓN — PERSONALIZA TU JUEGO</summary>
+<div class="settings">
+<label class="field">Dificultad<select id="difficulty"><option value="easy">Fácil — avanza cada 5 pulsos</option><option value="hard">Difícil — avanza cada 5 pulsos, recorrido mayor</option></select></label>
+<label class="field">Pulsaciones por avance<input id="pulseGoal" type="number" min="1" max="20" value="5"></label>
+<label class="field">Tecla caballo rosa<input id="pinkKey" maxlength="1" value="a"></label>
+<label class="field">Tecla caballo azul<input id="blueKey" maxlength="1" value="l"></label>
+<label class="field">Nombre caballo rosa<input id="pinkName" value="CABALLO ROSA"></label>
+<label class="field">Nombre caballo azul<input id="blueName" value="CABALLO AZUL"></label>
+<label class="field">Imagen caballo rosa<input id="pinkImage" type="file" accept="image/*"><small>Sube PNG, JPG o WebP. Si no eliges imagen se usa el caballo predeterminado.</small></label>
+<label class="field">Imagen caballo azul<input id="blueImage" type="file" accept="image/*"></label>
+<label class="field">Fondo de la pista<input id="backgroundImage" type="file" accept="image/*"></label>
+<label class="field">Música de carrera<input id="musicFile" type="file" accept="audio/*"></label>
+<label class="field">Efecto de pulsación<input id="tapSound" type="file" accept="audio/*"></label>
+<label class="field">Efecto de victoria<input id="winSound" type="file" accept="audio/*"></label>
+<label class="field">Voz de instrucciones<select id="voiceMode"><option value="on">Instrucciones habladas y escritas</option><option value="off">Solo instrucciones escritas</option></select></label>
+<label class="field">Velocidad de avance<input id="stepSize" type="number" min="3" max="20" value="10"><small>Porcentaje de pista que avanza cada grupo de pulsaciones.</small></label>
+<label class="field">Volumen música<input id="volume" type="range" min="0" max="1" step=".05" value=".55"></label>
+</div>
+<p class="instructions"><b>Cómo jugar:</b> Cada jugador presiona repetidamente su botón o tecla. Al completar 5 pulsaciones (o el número que configures), su caballo avanza y el contador vuelve a cero automáticamente. ¡Sigue pulsando hasta cruzar la meta! En modo difícil, la pista es más larga. Puedes cambiar las teclas, imágenes, fondo, música y efectos en este panel.</p>
+</details>
+<div class="footer">DESAFÍOS LOCOS · Juego editable · Funciona en navegadores modernos de Windows 10 y 11</div>
+</main>
+<audio id="music" loop></audio><audio id="tapAudio"></audio><audio id="winAudio"></audio>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+let state={running:false,done:false,pink:0,blue:0,pinkP:0,blueP:0,goal:5,sound:true,step:10};
+let ctx;
+function say(t){if($('voiceMode').value==='off'||!('speechSynthesis'in window))return; speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang='es-MX';u.rate=1.02;u.pitch=1.12;speechSynthesis.speak(u)}
+function beep(freq=500,dur=.09){if(!state.sound)return;try{ctx=ctx||new(window.AudioContext||window.webkitAudioContext)();let o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=freq;o.type='triangle';g.gain.value=.07;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+dur)}catch(e){}}
+function meter(id,n){$(id).innerHTML=Array.from({length:state.goal},(_,i)=>'<i class="dot '+(i<n?'on':'')+'"></i>').join('')}
+function draw(){let goal=state.goal;['pink','blue'].forEach(k=>{let p=state[k],prog=state[k+'P'];$(k+'Count').textContent=p+' de '+goal+' pulsaciones';meter(k+'Meter',p);$(k+'Runner').style.left=(5+prog*.78)+'%';$(k+'Progress').style.width=prog+'%'});$('pulseLabel').textContent=goal;$('pinkTap').textContent='¡PULSAR ROSA! ('+$('pinkKey').value.toUpperCase()+')';$('blueTap').textContent='¡PULSAR AZUL! ('+$('blueKey').value.toUpperCase()+')'}
+function start(){if(state.done)return;state.running=true;$('status').textContent='¡YA! ¡QUE COMIENCE LA CARRERA!';say('En sus marcas, listos, fuera. ¡Que comience la carrera!');$('music').volume=Number($('volume').value);if($('music').src&&state.sound)$('music').play().catch(()=>{});beep(800,.2)}
+function reset(){state.running=false;state.done=false;state.pink=state.blue=state.pinkP=state.blueP=0;$('music').pause();$('status').textContent='¡PREPÁRENSE! PRESIONA INICIAR CARRERA';draw()}
+function pulse(k){if(!state.running||state.done)return;let p=k==='pink'?'pink':'blue';state[p]++;if(state.sound){let a=$('tapAudio');if(a.src){a.currentTime=0;a.play().catch(()=>{})}else beep(p==='pink'?640:420)}if(state[p]>=state.goal){state[p]=0;state[p+'P']=Math.min(100,state[p+'P']+state.step);beep(p==='pink'?880:700,.16);$('status').textContent=(p==='pink'?'¡ROSA':'¡AZUL')+' AVANZA!';if(state[p+'P']>=100)finish(p)}draw()}
+function finish(k){state.done=true;state.running=false;$('music').pause();$('status').textContent='🏆 ¡GANÓ '+$(''+k+'Name').value.toUpperCase()+'!';say('¡Tenemos ganador! ¡Felicidades '+$(''+k+'Name').value+'!');if($('winAudio').src&&state.sound){$('winAudio').currentTime=0;$('winAudio').play().catch(()=>{})}else{beep(1000,.25);setTimeout(()=>beep(1300,.3),180)}}
+$('startBtn').onclick=start;$('resetBtn').onclick=reset;$('pinkTap').onclick=()=>pulse('pink');$('blueTap').onclick=()=>pulse('blue');
+document.addEventListener('keydown',e=>{if(e.repeat||['INPUT','SELECT','TEXTAREA'].includes(document.activeElement.tagName))return;let key=e.key.toLowerCase();if(key===$('pinkKey').value.toLowerCase())pulse('pink');if(key===$('blueKey').value.toLowerCase())pulse('blue');if(key==='enter'&&!state.running&&!state.done)start()});
+$('pulseGoal').onchange=()=>{state.goal=Math.max(1,Math.min(20,Number($('pulseGoal').value)||5));$('pulseGoal').value=state.goal;state.pink=state.blue=0;draw()};
+$('stepSize').onchange=()=>state.step=Math.max(3,Math.min(20,Number($('stepSize').value)||10));
+$('difficulty').onchange=()=>{$('modeLabel').textContent=$('difficulty').value==='easy'?'FÁCIL':'DIFÍCIL';state.step=$('difficulty').value==='easy'?10:7;$('stepSize').value=state.step;reset()};
+$('pinkName').oninput=()=>document.querySelector('.pink h2').textContent='🐎 '+$('pinkName').value.toUpperCase();$('blueName').oninput=()=>document.querySelector('.blue h2').textContent='🐎 '+$('blueName').value.toUpperCase();
+function upload(id,fn){$(id).onchange=e=>{let f=e.target.files[0];if(f)fn(URL.createObjectURL(f))}}
+upload('pinkImage',u=>{$('pinkRunner').innerHTML='<img src="'+u+'" alt="Caballo rosa">'});upload('blueImage',u=>{$('blueRunner').innerHTML='<img src="'+u+'" alt="Caballo azul">'});upload('backgroundImage',u=>$('track').style.backgroundImage='url("'+u+'")');
+upload('musicFile',u=>{$('music').src=u});upload('tapSound',u=>$('tapAudio').src=u);upload('winSound',u=>$('winAudio').src=u);
+$('volume').oninput=()=>$('music').volume=Number($('volume').value);
+$('soundBtn').onclick=()=>{state.sound=!state.sound;$('soundBtn').textContent=state.sound?'🔊 SONIDO: ACTIVADO':'🔇 SONIDO: APAGADO';if(!state.sound)$('music').pause();else if(state.running)$('music').play().catch(()=>{})};
+$('pinkMeter').innerHTML='';$('blueMeter').innerHTML='';draw();
+})();
+</script>
+</body></html>
